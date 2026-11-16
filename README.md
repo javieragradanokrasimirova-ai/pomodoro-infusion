@@ -1,5 +1,7 @@
 # Pomodoro Infusion
 
+**Probar:** https://javieragradanokrasimirova-ai.github.io/pomodoro-infusion/
+
 Temporizador Pomodoro con estética de etiqueta de fruta vintage.
 
 - Cuatro planes base con respaldo científico (25/5, 50/10, 52/17 y 90/20).
