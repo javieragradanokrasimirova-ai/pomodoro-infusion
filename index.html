@@ -329,6 +329,105 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
   *,*::before,*::after{animation:none!important; transition:none!important}
   html{scroll-behavior:auto}
 }
+
+/* ---------- cintas de embalaje entre secciones (estáticas sin soporte) ---------- */
+.tape{position:relative; z-index:3; height:120px; margin-block:-36px; overflow:clip; pointer-events:none}
+.tape-band{position:absolute; left:-15%; width:130%; top:50%; padding-block:10px; border-block:2px solid var(--fg); white-space:nowrap; font-family:var(--f-sans); font-weight:800; font-stretch:115%; font-size:13px; line-height:1; letter-spacing:.2em; text-transform:uppercase; transition:background-color .9s, color .9s}
+.tape-band p{margin:0; display:inline-block}
+.tape-a{background:var(--accent); color:var(--on-accent); transform:translateY(-50%) rotate(-2.6deg)}
+.tape-b{background:var(--bg-2); color:var(--fg); transform:translateY(-50%) rotate(1.9deg)}
+@media (max-width:600px){.tape{height:96px; margin-block:-28px} .tape-band{font-size:11px; padding-block:8px} .tape-a{transform:translateY(-50%) rotate(-3.4deg)} .tape-b{transform:translateY(-50%) rotate(2.4deg)}}
+
+/* ---------- barra de lectura (solo con soporte) ---------- */
+.ripe-bar{display:none}
+
+/* ---------- animaciones ligadas al scroll ---------- */
+:root{--plx:1}
+@media (max-width:700px){:root{--plx:.55}}
+@supports (animation-timeline: view()){
+@media (prefers-reduced-motion: no-preference){
+
+  /* barra de lectura que madura, con un tomatito rodando */
+  .ripe-bar{display:block; position:fixed; z-index:85; left:0; right:0; top:env(safe-area-inset-top,0px); height:5px; pointer-events:none}
+  .ripe-fill{position:absolute; inset:0; transform-origin:left center; background:linear-gradient(90deg,#8FB656,#F4923A 55%,#E2382A); animation:ripe-grow linear both; animation-timeline:scroll(root)}
+  .ripe-dot{position:absolute; top:-5px; left:0; width:15px; height:15px; border-radius:50%; border:1.5px solid var(--fg); animation:ripe-roll linear both; animation-timeline:scroll(root)}
+  .ripe-dot::before{content:""; position:absolute; left:50%; top:-4px; width:7px; height:5px; margin-left:-3.5px; border-radius:50% 50% 0 0; background:#4F8C3A}
+  @keyframes ripe-grow{from{transform:scaleX(0)} to{transform:scaleX(1)}}
+  @keyframes ripe-roll{from{left:0; rotate:0deg; background:#8FB656} 55%{background:#F4923A} to{left:calc(100% - 15px); rotate:900deg; background:#E2382A}}
+
+  /* hero: capas a distinta velocidad al bajar */
+  .hero .brand, .hero .slogan, .stage, .stage::before, .deco-badge, .deco-fresh, .deco-sweet{
+    animation-timing-function:linear; animation-fill-mode:both; animation-duration:auto;
+    animation-timeline:scroll(root); animation-range:0 85vh}
+  /* en una sola columna el título, el lema y el tomate se cruzarían: ahí solo se mueven las decoraciones */
+  @media (min-width:980px){
+    .hero .brand{animation-name:plx-brand}
+    .hero .slogan{animation-name:plx-slogan}
+    .stage{animation-name:plx-stage; transform-origin:50% 20%}
+  }
+  .stage::before{animation-name:plx-dots}
+  .deco-badge{animation-name:plx-badge}
+  .deco-fresh{animation-name:plx-fresh}
+  .deco-sweet{animation-name:plx-sweet}
+  @keyframes plx-brand{to{translate:0 calc(-120px * var(--plx)); opacity:.25}}
+  @keyframes plx-slogan{to{translate:0 calc(-60px * var(--plx))}}
+  @keyframes plx-stage{to{translate:0 calc(70px * var(--plx)); scale:.86}}
+  @keyframes plx-dots{to{translate:calc(40px * var(--plx)) calc(110px * var(--plx))}}
+  @keyframes plx-badge{to{translate:80px -90px; opacity:0}}
+  @keyframes plx-fresh{to{translate:-70px 80px; opacity:0}}
+  @keyframes plx-sweet{to{translate:-80px -50px; opacity:0}}
+  /* el anillo de texto gira con el scroll, además de su giro lento con el temporizador */
+  #ringtext{animation-name:spin, ring-scroll; animation-duration:120s, auto; animation-timing-function:linear, linear; animation-iteration-count:infinite, 1; animation-fill-mode:none, both; animation-play-state:paused, running; animation-timeline:auto, scroll(root); animation-range:normal, 0 85vh}
+  body.running #ringtext{animation-play-state:running, running}
+  @keyframes ring-scroll{to{rotate:-110deg}}
+
+  /* cintas: se desplazan en sentidos opuestos */
+  .tape{view-timeline:--tape block}
+  .tape-band p{animation-timing-function:linear; animation-fill-mode:both; animation-timeline:--tape; animation-range:cover 0% cover 100%}
+  .tape-a p{animation-name:tape-left}
+  .tape-b p{animation-name:tape-right}
+  @keyframes tape-left{from{translate:0 0} to{translate:-28% 0}}
+  @keyframes tape-right{from{translate:-28% 0} to{translate:0 0}}
+
+  /* títulos que se imprimen por planchas: roja, trama y tinta */
+  .script-h{position:relative; isolation:isolate; view-timeline:--title block}
+  .script-h, .script-h::before, .script-h::after{animation-timing-function:linear; animation-fill-mode:both; animation-timeline:--title; animation-range:entry 0% cover 42%}
+  .script-h{animation-name:ink-in}
+  .script-h::before, .script-h::after{content:attr(data-text); position:absolute; inset:0; z-index:-1; pointer-events:none}
+  .script-h::before{color:var(--accent); animation-name:plate-red}
+  .script-h::after{color:transparent; background:radial-gradient(circle, var(--fg) 1.1px, transparent 1.6px) 0 0/5px 5px; -webkit-background-clip:text; background-clip:text; animation-name:plate-dots}
+  @keyframes ink-in{0%, 45%{opacity:0; scale:1.04} to{opacity:1; scale:1}}
+  @keyframes plate-red{from{translate:-46px 16px; opacity:0} 30%{opacity:.95} to{translate:4px 3px; opacity:.9}}
+  @keyframes plate-dots{from{translate:42px -14px; opacity:0} 30%{opacity:1} to{translate:-3px -2px; opacity:.55}}
+
+  /* tarjetas de planes que se pegan como pegatinas */
+  .plan{view-timeline:--card block; animation-name:stick; animation-timing-function:linear; animation-fill-mode:both; animation-timeline:view(); animation-range:entry 0% cover 30%}
+  .plan:nth-child(1){--r:-7deg}
+  .plan:nth-child(2){--r:5deg; animation-range:entry 12% cover 34%}
+  .plan:nth-child(3){--r:-4deg; animation-range:entry 24% cover 38%}
+  .plan:nth-child(4){--r:6deg; animation-range:entry 36% cover 42%}
+  @keyframes stick{
+    0%{translate:0 90px; rotate:var(--r); scale:1.14; opacity:0; box-shadow:0 34px 40px -16px rgba(0,0,0,.45)}
+    50%{opacity:1}
+    80%{translate:0 -6px; rotate:calc(var(--r) * -.25); scale:.985; box-shadow:0 6px 10px -6px rgba(0,0,0,.3)}
+    100%{translate:0 0; rotate:0deg; scale:1; box-shadow:0 0 0 0 rgba(0,0,0,0)}}
+  .plan.is-on .stamp{animation-name:thump; animation-timing-function:linear; animation-fill-mode:both; animation-timeline:--card; animation-range:cover 30% cover 42%}
+  @keyframes thump{0%{scale:2.6; opacity:0} 60%{scale:.88; opacity:1} to{scale:1; opacity:1}}
+
+  /* la gráfica del descanso se dibuja al verla */
+  .chart-wrap{view-timeline:--chart block}
+  .c-curve, .c-area, .c-anchor, .c-obs, .c-user, .c-user-ring, .c-lab, .c-user-lab{animation-timing-function:linear; animation-fill-mode:both; animation-timeline:--chart}
+  .c-curve{stroke-dasharray:1; animation-name:draw; animation-range:entry 0% cover 27%}
+  .c-area{animation-name:area-in; animation-range:cover 14% cover 28%}
+  .c-anchor, .c-obs{transform-box:fill-box; transform-origin:center; animation-name:dot-pop; animation-range:cover 19% cover 26%}
+  .c-user, .c-user-ring{transform-box:fill-box; transform-origin:center; animation-name:dot-pop; animation-range:cover 25% cover 32%}
+  .c-lab, .c-user-lab{animation-name:fade-in; animation-range:cover 21% cover 30%}
+  @keyframes draw{from{stroke-dashoffset:1} to{stroke-dashoffset:0}}
+  @keyframes area-in{from{opacity:0} to{opacity:.09}}
+  @keyframes dot-pop{0%{scale:0} 70%{scale:1.35} to{scale:1}}
+  @keyframes fade-in{from{opacity:0} to{opacity:1}}
+}
+}
 </style>
 
 </head>
@@ -365,6 +464,11 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
   </div>
   <p class="sr" id="live" aria-live="polite"></p>
 </section>
+
+<div class="tape" aria-hidden="true">
+  <div class="tape-band tape-a"><p>Pomodoro Infusion ✦ Madurado al sol ✦ Recogido a mano ✦ 100% foco natural ✦ Pomodoro Infusion ✦ Madurado al sol ✦ Recogido a mano ✦ 100% foco natural ✦ Pomodoro Infusion ✦ Madurado al sol ✦ Recogido a mano ✦ 100% foco natural ✦ Pomodoro Infusion ✦ Madurado al sol ✦ Recogido a mano ✦ 100% foco natural ✦ Pomodoro Infusion ✦ Madurado al sol ✦ Recogido a mano ✦ 100% foco natural ✦ </p></div>
+  <div class="tape-band tape-b"><p>Frágil: contiene concentración ✦ Mantener lejos del móvil ✦ Consumir en bloques ✦ Frágil: contiene concentración ✦ Mantener lejos del móvil ✦ Consumir en bloques ✦ Frágil: contiene concentración ✦ Mantener lejos del móvil ✦ Consumir en bloques ✦ Frágil: contiene concentración ✦ Mantener lejos del móvil ✦ Consumir en bloques ✦ Frágil: contiene concentración ✦ Mantener lejos del móvil ✦ Consumir en bloques ✦ </p></div>
+</div>
 
 <section class="sec" id="planes">
   <div class="wrap">
@@ -466,6 +570,11 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
   </div>
 </section>
 
+<div class="tape" aria-hidden="true">
+  <div class="tape-band tape-a"><p>Hecho con ciencia ✦ Sin azúcares añadidos ✦ Cosecha 2026 ✦ Pomodoro Infusion ✦ Hecho con ciencia ✦ Sin azúcares añadidos ✦ Cosecha 2026 ✦ Pomodoro Infusion ✦ Hecho con ciencia ✦ Sin azúcares añadidos ✦ Cosecha 2026 ✦ Pomodoro Infusion ✦ Hecho con ciencia ✦ Sin azúcares añadidos ✦ Cosecha 2026 ✦ Pomodoro Infusion ✦ Hecho con ciencia ✦ Sin azúcares añadidos ✦ Cosecha 2026 ✦ Pomodoro Infusion ✦ </p></div>
+  <div class="tape-band tape-b"><p>Abrir por aquí ✦ Este lado hacia arriba ✦ Descansar entre bloques ✦ Abrir por aquí ✦ Este lado hacia arriba ✦ Descansar entre bloques ✦ Abrir por aquí ✦ Este lado hacia arriba ✦ Descansar entre bloques ✦ Abrir por aquí ✦ Este lado hacia arriba ✦ Descansar entre bloques ✦ Abrir por aquí ✦ Este lado hacia arriba ✦ Descansar entre bloques ✦ </p></div>
+</div>
+
 <section class="sec" id="ciencia">
   <div class="wrap">
     <header class="sec-head">
@@ -494,6 +603,7 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
   </div>
 </footer>
 
+<div class="ripe-bar" aria-hidden="true"><span class="ripe-fill"></span><span class="ripe-dot"></span></div>
 <div class="dock" id="dock" aria-hidden="true">
   <div><div class="dock-time" id="dock-time">25:00</div><div class="dock-ph" id="dock-ph">Estudio</div></div>
   <button type="button" id="dock-btn" tabindex="-1" aria-label="Empezar o pausar"></button>
@@ -628,9 +738,9 @@ svg.innerHTML=
    '<text class="st-plu" id="stPlu" x="220" y="287" text-anchor="middle">PLU 4664</text>'+
   '</g>'+
  '</g></g>'+
- '<g transform="translate(430 44) rotate(12)"><circle class="badge-c" r="46"/><g class="badge-ring"><text class="badge-t"><textPath href="#badgePath" textLength="214" lengthAdjust="spacing">100% FOCO NATURAL ✦ SIN DISTRACCIONES ✦ </textPath></text></g><text class="badge-big" y="-1" text-anchor="middle">ECO</text><text class="badge-big" y="15" text-anchor="middle">FOCO</text></g>'+
- '<g transform="translate(14 430) rotate(-7)"><ellipse class="fresh-bg" rx="46" ry="17"/><text class="fresh-t" y="4.5" text-anchor="middle">FRESCO.</text></g>'+
- '<g transform="translate(-22 58) rotate(-11)"><text class="sweet-t">Dulce.</text><text class="sweet-t" x="10" y="28">Foco.</text></g>'+
+ '<g class="deco-badge" transform="translate(430 44) rotate(12)"><circle class="badge-c" r="46"/><g class="badge-ring"><text class="badge-t"><textPath href="#badgePath" textLength="214" lengthAdjust="spacing">100% FOCO NATURAL ✦ SIN DISTRACCIONES ✦ </textPath></text></g><text class="badge-big" y="-1" text-anchor="middle">ECO</text><text class="badge-big" y="15" text-anchor="middle">FOCO</text></g>'+
+ '<g class="deco-fresh" transform="translate(14 430) rotate(-7)"><ellipse class="fresh-bg" rx="46" ry="17"/><text class="fresh-t" y="4.5" text-anchor="middle">FRESCO.</text></g>'+
+ '<g class="deco-sweet" transform="translate(-22 58) rotate(-11)"><text class="sweet-t">Dulce.</text><text class="sweet-t" x="10" y="28">Foco.</text></g>'+
  '<g id="harvest"></g><g id="sparks"></g>';
 
 (function(){var g=$('#ticks');for(var i=0;i<60;i++){var a=i/60*Math.PI*2-Math.PI/2,r1=186,r2=i%5?191:196;mk('line',{class:'tick',x1:(CX+r1*Math.cos(a)).toFixed(1),y1:(CY+r1*Math.sin(a)).toFixed(1),x2:(CX+r2*Math.cos(a)).toFixed(1),y2:(CY+r2*Math.sin(a)).toFixed(1)},g)}})();
@@ -973,7 +1083,7 @@ function buildChart(){
   var d='',area='M'+cx(5)+','+cy(0);
   for(var w=5;w<=180;w++){var p=cx(w).toFixed(1)+','+cy(recExact(w)).toFixed(1);d+=(w===5?'M':'L')+p;area+='L'+p}
   area+='L'+cx(180)+','+cy(0)+'Z';
-  mk('path',{class:'c-area',d:area},s);mk('path',{class:'c-curve',d:d},s);
+  mk('path',{class:'c-area',d:area},s);mk('path',{class:'c-curve',d:d,pathLength:1},s);
   cross=mk('line',{class:'c-cross',y1:M.t,y2:CH-M.b,x1:-10,x2:-10,visibility:'hidden'},s);
   hdot=mk('circle',{class:'c-hdot',r:4,cx:-10,cy:-10,visibility:'hidden'},s);
   [[25,5,'Clásico 25/5'],[50,10,'50/10'],[90,20,'Ultradiano 90/20']].forEach(function(a){mk('circle',{class:'c-anchor',cx:cx(a[0]),cy:cy(a[1]),r:5.5},s);var t=mk('text',{class:'c-lab',x:cx(a[0])+8,y:cy(a[1])+23,'text-anchor':'start'},s);t.textContent=a[2]});
@@ -1062,6 +1172,7 @@ if('IntersectionObserver' in window){
   new IntersectionObserver(function(es){es.forEach(function(en){pastHero=!en.isIntersecting&&en.boundingClientRect.top<0;updDock()})}).observe($('#controls'));
 }
 
+document.querySelectorAll('.script-h').forEach(function(h){h.setAttribute('data-text',h.textContent)});
 renderPlans();bindSettings();renderStats();buildChart();
 var expired=T.running&&T.endAt<=Date.now();
 render(false);
