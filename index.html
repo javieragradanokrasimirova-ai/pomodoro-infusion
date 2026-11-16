@@ -12,6 +12,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='37' rx='26' ry='22' fill='%23E2382A' stroke='%232E2925' stroke-width='3'/%3E%3Cpath d='M32 17l5-7 1 8 8-2-6 6 7 4-9 0-3 6-3-6-9 0 7-4-6-6 8 2z' fill='%234F8C3A' stroke='%232E2925' stroke-width='1.5' stroke-linejoin='round'/%3E%3Cpath d='M17 34c0-6 4-10 9-12' fill='none' stroke='%23FFF7EA' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
 <title>Pomodoro Infusion</title>
+<script>(function(){try{if(!matchMedia("(prefers-reduced-motion: reduce)").matches&&"IntersectionObserver" in window)document.documentElement.classList.add("reveal")}catch(e){}})()</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -341,9 +342,72 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
 /* ---------- barra de lectura (solo con soporte) ---------- */
 .ripe-bar{display:none}
 
-/* ---------- animaciones ligadas al scroll ---------- */
-:root{--plx:1}
+/* ---------- movimiento ---------- */
+/* curvas: salida suave, muelle con rebote y muelle suave; linear() donde el navegador lo entiende */
+:root{--plx:1; --ease-out:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1); --spring-soft:cubic-bezier(.22,1.2,.36,1); --scroll-ease:cubic-bezier(.45,0,.2,1)}
+@supports (transition-timing-function: linear(0, 1)){
+  :root{
+    --spring:linear(0, .009, .035 2.1%, .141 4.4%, .723 12.9%, .938 16.7%, 1.017 19.4%, 1.067, 1.099 24.3%, 1.108 26%, 1.104, 1.088 29.8%, 1.03 34.4%, 1.002 37.3%, .986 40.4%, .98 43.5%, .996 53.3%, 1.002 58.1%, 1 72.5%, 1);
+    --spring-soft:linear(0, .02, .08 3.2%, .3 7.9%, .62 14%, .84 20.2%, .96 27%, 1.01 34%, 1.02 41%, 1.005 55%, 1);
+  }
+}
 @media (max-width:700px){:root{--plx:.55}}
+
+/* scroll con inercia (Lenis) */
+html.lenis, html.lenis body{height:auto}
+.lenis.lenis-smooth{scroll-behavior:auto !important}
+.lenis:not(.lenis-autoToggle).lenis-stopped{overflow:clip}
+.lenis [data-lenis-prevent]{overscroll-behavior:contain}
+
+/* ---------- entradas: se disparan al aparecer y se completan solas ---------- */
+@media (prefers-reduced-motion: no-preference){
+  /* títulos impresos por planchas: roja y de trama llegan con muelle, la tinta entra al final */
+  html.reveal .script-h{position:relative; isolation:isolate}
+  html.reveal .script-h::before, html.reveal .script-h::after{content:attr(data-text); position:absolute; inset:0; z-index:-1; pointer-events:none}
+  html.reveal .script-h::before{color:var(--accent); opacity:0; translate:-46px 16px}
+  html.reveal .script-h::after{color:transparent; background:radial-gradient(circle, var(--fg) 1.1px, transparent 1.6px) 0 0/5px 5px; -webkit-background-clip:text; background-clip:text; opacity:0; translate:42px -14px}
+  html.reveal .script-h:not(.is-in){color:transparent}
+  html.reveal .script-h.is-in{animation:ink-in .75s var(--ease-out) .42s both}
+  html.reveal .script-h.is-in::before{animation:plate-red 1.2s var(--spring-soft) both}
+  html.reveal .script-h.is-in::after{animation:plate-dots 1.2s var(--spring-soft) .08s both}
+  @keyframes ink-in{from{color:transparent} to{color:var(--fg)}}
+  @keyframes plate-red{from{translate:-46px 16px; opacity:0} 20%{opacity:.95} to{translate:4px 3px; opacity:.9}}
+  @keyframes plate-dots{from{translate:42px -14px; opacity:0} 20%{opacity:1} to{translate:-3px -2px; opacity:.55}}
+
+  /* tarjetas que caen como pegatinas, una tras otra; el sello entra con un golpe al final */
+  .plan:nth-child(1){--r:-7deg}
+  .plan:nth-child(2){--r:5deg}
+  .plan:nth-child(3){--r:-4deg}
+  .plan:nth-child(4){--r:6deg}
+  html.reveal .plan:not(.is-in):not(.shown){opacity:0; translate:0 70px; rotate:var(--r); scale:1.1}
+  html.reveal .plan.is-in{animation:stick 1.1s var(--spring) var(--d,0ms) both}
+  @keyframes stick{
+    from{translate:0 70px; rotate:var(--r); scale:1.1; opacity:0; box-shadow:0 34px 40px -16px rgba(0,0,0,.45)}
+    25%{opacity:1}
+    to{translate:0 0; rotate:0deg; scale:1; opacity:1; box-shadow:0 0 0 0 rgba(0,0,0,0)}}
+  html.reveal .plan.is-on.is-in .stamp{animation:thump .7s var(--spring) calc(var(--d,0ms) + 620ms) both}
+  html.reveal .plan.is-on.shown .stamp{animation:thump .7s var(--spring) .05s both}
+  @keyframes thump{from{scale:2.4; opacity:0} to{scale:1; opacity:1}}
+
+  /* la gráfica se dibuja; los puntos salen mientras la línea pasa por ellos */
+  html.reveal .chart-wrap :is(.c-anchor, .c-obs, .c-user, .c-user-ring){transform-box:fill-box; transform-origin:center}
+  html.reveal .chart-wrap:not(.shown) .c-curve{stroke-dasharray:1; stroke-dashoffset:1}
+  html.reveal .chart-wrap:not(.shown) .c-area{opacity:0}
+  html.reveal .chart-wrap:not(.shown) :is(.c-anchor, .c-obs, .c-user, .c-user-ring){scale:0}
+  html.reveal .chart-wrap:not(.shown) :is(.c-lab, .c-user-lab){opacity:0}
+  html.reveal .chart-wrap.is-in:not(.shown) .c-curve{animation:draw 1.4s cubic-bezier(.5,0,.15,1) both}
+  html.reveal .chart-wrap.is-in:not(.shown) .c-area{animation:area-in 1s var(--ease-out) .5s both}
+  html.reveal .chart-wrap.is-in:not(.shown) :is(.c-anchor, .c-obs){animation:dot-pop .7s var(--spring) var(--d,.6s) both}
+  html.reveal .chart-wrap.is-in:not(.shown) .c-lab{animation:fade-up .6s var(--ease-out) calc(var(--d,.6s) + .08s) both}
+  html.reveal .chart-wrap.is-in:not(.shown) :is(.c-user, .c-user-ring){animation:dot-pop .8s var(--spring) .62s both}
+  html.reveal .chart-wrap.is-in:not(.shown) .c-user-lab{animation:fade-up .6s var(--ease-out) .75s both}
+  @keyframes draw{from{stroke-dashoffset:1} to{stroke-dashoffset:0}}
+  @keyframes area-in{from{opacity:0} to{opacity:.09}}
+  @keyframes dot-pop{from{scale:0} to{scale:1}}
+  @keyframes fade-up{from{opacity:0; translate:0 6px} to{opacity:1; translate:0 0}}
+}
+
+/* ---------- lo que sí sigue al scroll (suavizado por la inercia) ---------- */
 @supports (animation-timeline: view()){
 @media (prefers-reduced-motion: no-preference){
 
@@ -355,10 +419,10 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
   @keyframes ripe-grow{from{transform:scaleX(0)} to{transform:scaleX(1)}}
   @keyframes ripe-roll{from{left:0; rotate:0deg; background:#8FB656} 55%{background:#F4923A} to{left:calc(100% - 15px); rotate:900deg; background:#E2382A}}
 
-  /* hero: capas a distinta velocidad al bajar */
+  /* hero: capas a distinta velocidad, con aceleración y frenado */
   .hero .brand, .hero .slogan, .stage, .stage::before, .deco-badge, .deco-fresh, .deco-sweet{
-    animation-timing-function:linear; animation-fill-mode:both; animation-duration:auto;
-    animation-timeline:scroll(root); animation-range:0 85vh}
+    animation-timing-function:var(--scroll-ease); animation-fill-mode:both; animation-duration:auto;
+    animation-timeline:scroll(root); animation-range:0 110vh}
   /* en una sola columna el título, el lema y el tomate se cruzarían: ahí solo se mueven las decoraciones */
   @media (min-width:980px){
     .hero .brand{animation-name:plx-brand}
@@ -369,17 +433,17 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
   .deco-badge{animation-name:plx-badge}
   .deco-fresh{animation-name:plx-fresh}
   .deco-sweet{animation-name:plx-sweet}
-  @keyframes plx-brand{to{translate:0 calc(-120px * var(--plx)); opacity:.25}}
-  @keyframes plx-slogan{to{translate:0 calc(-60px * var(--plx))}}
-  @keyframes plx-stage{to{translate:0 calc(70px * var(--plx)); scale:.86}}
-  @keyframes plx-dots{to{translate:calc(40px * var(--plx)) calc(110px * var(--plx))}}
-  @keyframes plx-badge{to{translate:80px -90px; opacity:0}}
-  @keyframes plx-fresh{to{translate:-70px 80px; opacity:0}}
-  @keyframes plx-sweet{to{translate:-80px -50px; opacity:0}}
+  @keyframes plx-brand{to{translate:0 calc(-95px * var(--plx)); opacity:.3}}
+  @keyframes plx-slogan{to{translate:0 calc(-45px * var(--plx))}}
+  @keyframes plx-stage{to{translate:0 calc(50px * var(--plx)); scale:.9}}
+  @keyframes plx-dots{to{translate:calc(30px * var(--plx)) calc(80px * var(--plx))}}
+  @keyframes plx-badge{to{translate:60px -70px; opacity:0}}
+  @keyframes plx-fresh{to{translate:-55px 60px; opacity:0}}
+  @keyframes plx-sweet{to{translate:-60px -40px; opacity:0}}
   /* el anillo de texto gira con el scroll, además de su giro lento con el temporizador */
-  #ringtext{animation-name:spin, ring-scroll; animation-duration:120s, auto; animation-timing-function:linear, linear; animation-iteration-count:infinite, 1; animation-fill-mode:none, both; animation-play-state:paused, running; animation-timeline:auto, scroll(root); animation-range:normal, 0 85vh}
+  #ringtext{animation-name:spin, ring-scroll; animation-duration:120s, auto; animation-timing-function:linear, var(--scroll-ease); animation-iteration-count:infinite, 1; animation-fill-mode:none, both; animation-play-state:paused, running; animation-timeline:auto, scroll(root); animation-range:normal, 0 120vh}
   body.running #ringtext{animation-play-state:running, running}
-  @keyframes ring-scroll{to{rotate:-110deg}}
+  @keyframes ring-scroll{to{rotate:-100deg}}
 
   /* cintas: se desplazan en sentidos opuestos */
   .tape{view-timeline:--tape block}
@@ -388,44 +452,6 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
   .tape-b p{animation-name:tape-right}
   @keyframes tape-left{from{translate:0 0} to{translate:-28% 0}}
   @keyframes tape-right{from{translate:-28% 0} to{translate:0 0}}
-
-  /* títulos que se imprimen por planchas: roja, trama y tinta */
-  .script-h{position:relative; isolation:isolate; view-timeline:--title block}
-  .script-h, .script-h::before, .script-h::after{animation-timing-function:linear; animation-fill-mode:both; animation-timeline:--title; animation-range:entry 0% cover 42%}
-  .script-h{animation-name:ink-in}
-  .script-h::before, .script-h::after{content:attr(data-text); position:absolute; inset:0; z-index:-1; pointer-events:none}
-  .script-h::before{color:var(--accent); animation-name:plate-red}
-  .script-h::after{color:transparent; background:radial-gradient(circle, var(--fg) 1.1px, transparent 1.6px) 0 0/5px 5px; -webkit-background-clip:text; background-clip:text; animation-name:plate-dots}
-  @keyframes ink-in{0%, 45%{opacity:0; scale:1.04} to{opacity:1; scale:1}}
-  @keyframes plate-red{from{translate:-46px 16px; opacity:0} 30%{opacity:.95} to{translate:4px 3px; opacity:.9}}
-  @keyframes plate-dots{from{translate:42px -14px; opacity:0} 30%{opacity:1} to{translate:-3px -2px; opacity:.55}}
-
-  /* tarjetas de planes que se pegan como pegatinas */
-  .plan{view-timeline:--card block; animation-name:stick; animation-timing-function:linear; animation-fill-mode:both; animation-timeline:view(); animation-range:entry 0% cover 30%}
-  .plan:nth-child(1){--r:-7deg}
-  .plan:nth-child(2){--r:5deg; animation-range:entry 12% cover 34%}
-  .plan:nth-child(3){--r:-4deg; animation-range:entry 24% cover 38%}
-  .plan:nth-child(4){--r:6deg; animation-range:entry 36% cover 42%}
-  @keyframes stick{
-    0%{translate:0 90px; rotate:var(--r); scale:1.14; opacity:0; box-shadow:0 34px 40px -16px rgba(0,0,0,.45)}
-    50%{opacity:1}
-    80%{translate:0 -6px; rotate:calc(var(--r) * -.25); scale:.985; box-shadow:0 6px 10px -6px rgba(0,0,0,.3)}
-    100%{translate:0 0; rotate:0deg; scale:1; box-shadow:0 0 0 0 rgba(0,0,0,0)}}
-  .plan.is-on .stamp{animation-name:thump; animation-timing-function:linear; animation-fill-mode:both; animation-timeline:--card; animation-range:cover 30% cover 42%}
-  @keyframes thump{0%{scale:2.6; opacity:0} 60%{scale:.88; opacity:1} to{scale:1; opacity:1}}
-
-  /* la gráfica del descanso se dibuja al verla */
-  .chart-wrap{view-timeline:--chart block}
-  .c-curve, .c-area, .c-anchor, .c-obs, .c-user, .c-user-ring, .c-lab, .c-user-lab{animation-timing-function:linear; animation-fill-mode:both; animation-timeline:--chart}
-  .c-curve{stroke-dasharray:1; animation-name:draw; animation-range:entry 0% cover 27%}
-  .c-area{animation-name:area-in; animation-range:cover 14% cover 28%}
-  .c-anchor, .c-obs{transform-box:fill-box; transform-origin:center; animation-name:dot-pop; animation-range:cover 19% cover 26%}
-  .c-user, .c-user-ring{transform-box:fill-box; transform-origin:center; animation-name:dot-pop; animation-range:cover 25% cover 32%}
-  .c-lab, .c-user-lab{animation-name:fade-in; animation-range:cover 21% cover 30%}
-  @keyframes draw{from{stroke-dashoffset:1} to{stroke-dashoffset:0}}
-  @keyframes area-in{from{opacity:0} to{opacity:.09}}
-  @keyframes dot-pop{0%{scale:0} 70%{scale:1.35} to{scale:1}}
-  @keyframes fade-in{from{opacity:0} to{opacity:1}}
 }
 }
 </style>
@@ -532,7 +558,7 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
       <div class="chart-wrap" id="chart"><div class="tip" id="tip" hidden></div></div>
       <details class="tbl">
         <summary>Ver los puntos como tabla</summary>
-        <div class="tbl-scroll">
+        <div class="tbl-scroll" data-lenis-prevent>
           <table>
             <thead><tr><th>Estudio</th><th>Descanso</th><th>Origen</th></tr></thead>
             <tbody>
@@ -611,6 +637,7 @@ details.tbl summary{cursor:pointer; font-family:var(--f-mono); font-size:12px; l
 <div class="toast" id="toast" role="status"></div>
 <div class="overlay" id="overlay" hidden><div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="m-title"></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.27/dist/lenis.min.js"></script>
 <script>
 (function(){
 'use strict';
@@ -939,6 +966,7 @@ function toast(msg){var t=$('#toast');t.textContent=msg;t.classList.add('show');
 
 var modalOpen=null,lastFocus=null;
 function showModal(o){
+  if(lenis) lenis.stop();
   var ov=$('#overlay'),m=$('#modal');
   lastFocus=document.activeElement;
   var burst='';
@@ -952,7 +980,7 @@ function showModal(o){
   if(o.secondary) $('#m-no').onclick=function(){closeModal();if(o.onSecondary) o.onSecondary()};
   setTimeout(function(){$('#m-yes').focus()},30);
 }
-function closeModal(){$('#overlay').hidden=true;modalOpen=null;if(lastFocus&&lastFocus.focus) try{lastFocus.focus({preventScroll:true})}catch(e){}}
+function closeModal(){if(lenis) lenis.start();$('#overlay').hidden=true;modalOpen=null;if(lastFocus&&lastFocus.focus) try{lastFocus.focus({preventScroll:true})}catch(e){}}
 $('#overlay').addEventListener('click',function(e){if(e.target.id==='overlay') closeModal()});
 
 /* ---------- sonido ---------- */
@@ -1003,10 +1031,11 @@ function renderPlans(){
       '<button class="btn" type="button" data-plan="'+p.id+'" aria-pressed="'+on+'">'+(on?'En uso':'Usar este plan')+'</button>'+
     '</article>';
   }).join('');
+  afterPlansRender();
 }
 $('#plans').addEventListener('click',function(e){var b=e.target.closest('[data-plan]');if(b) applyPlan(b.getAttribute('data-plan'))});
 function applyPlan(id){
-  if(id===S.planId&&id!=='custom'){$('#hero').scrollIntoView({behavior:reduce.matches?'auto':'smooth'});return}
+  if(id===S.planId&&id!=='custom'){goTo($('#hero'));return}
   if(untouched()){doApply(id);return}
   showModal({title:'¿Cambiar de plan?',text:'Hay una ronda en marcha. Si cambias ahora, el temporizador vuelve al bloque 1 con el plan nuevo.',primary:'Cambiar y reiniciar',onPrimary:function(){doApply(id)},secondary:'Seguir como estaba'});
 }
@@ -1014,7 +1043,7 @@ function doApply(id){
   S.planId=id;saveS();T=fresh();saveT();schedule();updateWake();
   lastSeeds='';renderPlans();renderRecipe();render(true);
   toast('Plan «'+plan().name+'» listo: '+fmtMin(plan().work)+' / '+fmtMin(plan().brk));
-  $('#hero').scrollIntoView({behavior:reduce.matches?'auto':'smooth'});
+  goTo($('#hero'));
 }
 
 /* ---------- receta ---------- */
@@ -1063,7 +1092,7 @@ document.querySelectorAll('.chip').forEach(function(b){b.addEventListener('click
 cwMan.addEventListener('change',function(){S.custom.manual=cwMan.checked;if(!S.custom.manual) S.custom.brk=recBreak(S.custom.work);saveS();if(S.planId==='custom'&&untouched()){T=fresh();saveT();render(false)}renderRecipe()});
 cwB.addEventListener('input',function(){var v=parseInt(cwB.value,10);if(v>=1&&v<=60){S.custom.brk=v;saveS();if(S.planId==='custom'&&untouched()){T=fresh();saveT();render(false)}renderRecipe()}});
 cwB.addEventListener('blur',renderRecipe);
-$('#cw-apply').addEventListener('click',function(){if(S.planId==='custom'&&untouched()){$('#hero').scrollIntoView({behavior:reduce.matches?'auto':'smooth'});return}applyPlan('custom')});
+$('#cw-apply').addEventListener('click',function(){if(S.planId==='custom'&&untouched()){goTo($('#hero'));return}applyPlan('custom')});
 
 /* ---------- gráfico ---------- */
 var CW=640,CH=300,M={l:48,r:20,t:30,b:46};
@@ -1086,9 +1115,9 @@ function buildChart(){
   mk('path',{class:'c-area',d:area},s);mk('path',{class:'c-curve',d:d,pathLength:1},s);
   cross=mk('line',{class:'c-cross',y1:M.t,y2:CH-M.b,x1:-10,x2:-10,visibility:'hidden'},s);
   hdot=mk('circle',{class:'c-hdot',r:4,cx:-10,cy:-10,visibility:'hidden'},s);
-  [[25,5,'Clásico 25/5'],[50,10,'50/10'],[90,20,'Ultradiano 90/20']].forEach(function(a){mk('circle',{class:'c-anchor',cx:cx(a[0]),cy:cy(a[1]),r:5.5},s);var t=mk('text',{class:'c-lab',x:cx(a[0])+8,y:cy(a[1])+23,'text-anchor':'start'},s);t.textContent=a[2]});
-  mk('circle',{class:'c-obs',cx:cx(52),cy:cy(17),r:6},s);
-  var o=mk('text',{class:'c-lab',x:cx(52)-10,y:cy(17)+4,'text-anchor':'end'},s);o.textContent='52/17 observado';
+  [[25,5,'Clásico 25/5'],[50,10,'50/10'],[90,20,'Ultradiano 90/20']].forEach(function(a,i){var dd='--d:'+(0.3+i*0.15).toFixed(2)+'s';mk('circle',{class:'c-anchor',style:dd,cx:cx(a[0]),cy:cy(a[1]),r:5.5},s);var t=mk('text',{class:'c-lab',style:dd,x:cx(a[0])+8,y:cy(a[1])+23,'text-anchor':'start'},s);t.textContent=a[2]});
+  mk('circle',{class:'c-obs',style:'--d:.5s',cx:cx(52),cy:cy(17),r:6},s);
+  var o=mk('text',{class:'c-lab',style:'--d:.5s',x:cx(52)-10,y:cy(17)+4,'text-anchor':'end'},s);o.textContent='52/17 observado';
   uRing=mk('circle',{class:'c-user-ring',r:13,cx:0,cy:0},s);
   uDot=mk('circle',{class:'c-user',r:7.5,cx:0,cy:0},s);
   uLab=mk('text',{class:'c-user-lab',x:0,y:0},s);
@@ -1156,7 +1185,7 @@ barcode($('#barcode'),7);barcode($('#barcode2'),19);
 btnT.addEventListener('click',toggle);dockBtn.addEventListener('click',toggle);
 $('#btn-skip').addEventListener('click',skip);
 $('#btn-reset').addEventListener('click',resetPhase);
-$('#more').addEventListener('click',function(){$('#planes').scrollIntoView({behavior:reduce.matches?'auto':'smooth'})});
+$('#more').addEventListener('click',function(){goTo($('#planes'))});
 document.addEventListener('keydown',function(e){
   if(modalOpen){if(e.key==='Escape') closeModal();return}
   if(e.ctrlKey||e.metaKey||e.altKey) return;
@@ -1172,8 +1201,32 @@ if('IntersectionObserver' in window){
   new IntersectionObserver(function(es){es.forEach(function(en){pastHero=!en.isIntersecting&&en.boundingClientRect.top<0;updDock()})}).observe($('#controls'));
 }
 
+/* entradas: se disparan al aparecer y se completan solas */
+var revealIO=null,plansShown=false;
+function observeReveal(){
+  if(!document.documentElement.classList.contains('reveal')) return;
+  if(!revealIO) revealIO=new IntersectionObserver(function(es){
+    var k=0;
+    es.forEach(function(en){
+      if(!en.isIntersecting) return;
+      var el=en.target;revealIO.unobserve(el);
+      if(el.classList.contains('plan')){el.style.setProperty('--d',(k++*130)+'ms');plansShown=true}
+      el.classList.add('is-in');
+      if(el.classList.contains('chart-wrap')) setTimeout(function(){el.classList.add('shown')},2600);
+    });
+  },{threshold:.18,rootMargin:'0px 0px -6% 0px'});
+  document.querySelectorAll('.script-h:not(.is-in), .plan:not(.is-in):not(.shown), .chart-wrap:not(.is-in)').forEach(function(el){revealIO.observe(el)});
+}
+function afterPlansRender(){
+  if(plansShown) document.querySelectorAll('.plan').forEach(function(c){c.classList.add('shown')});
+  else observeReveal();
+}
+/* scroll con inercia: solo con ratón/trackpad; el táctil sigue nativo */
+var lenis=null;
+if(window.Lenis&&!reduce.matches){try{lenis=new Lenis({lerp:.085,smoothWheel:true});(function raf(t){lenis.raf(t);requestAnimationFrame(raf)})(performance.now())}catch(e){lenis=null}}
+function goTo(el){if(lenis) lenis.scrollTo(el,{duration:1.3});else el.scrollIntoView({behavior:reduce.matches?'auto':'smooth'})}
 document.querySelectorAll('.script-h').forEach(function(h){h.setAttribute('data-text',h.textContent)});
-renderPlans();bindSettings();renderStats();buildChart();
+renderPlans();bindSettings();renderStats();buildChart();observeReveal();
 var expired=T.running&&T.endAt<=Date.now();
 render(false);
 renderRecipe();
